@@ -168,7 +168,7 @@ public abstract class JPAAbstractQuery<R> {
         }
 
         String unionSelects = IntStream.range(0, allowedKeys.size())
-                .mapToObj(i -> "SELECT CAST(:processId" + i + " AS VARCHAR) AS processId, CAST(:processVersion" + i + " AS VARCHAR) AS processVersion")
+                .mapToObj(i -> "SELECT CAST(:processId" + i + " AS VARCHAR(255)) AS processId, CAST(:processVersion" + i + " AS VARCHAR(255)) AS processVersion")
                 .collect(Collectors.joining(" UNION ALL "));
 
         String cte = "WITH _allowed_processes AS (" + unionSelects + ") ";
