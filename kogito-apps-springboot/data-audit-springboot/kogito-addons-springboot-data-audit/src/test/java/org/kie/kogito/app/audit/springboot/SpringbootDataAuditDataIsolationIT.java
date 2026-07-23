@@ -22,8 +22,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -69,28 +70,34 @@ public class SpringbootDataAuditDataIsolationIT {
     @MockitoBean
     Processes processes;
 
-    @BeforeAll
+    private final AtomicBoolean dataPublished = new AtomicBoolean(false);
+
+    /** Publish test data once — @BeforeAll cannot access Spring beans so we use a flag. */
+    @BeforeEach
     public void init() {
+        // Re-configure mock before each test since @MockitoBean resets between tests
         Process<? extends Model> allowedProcess = mock(Process.class);
         when(allowedProcess.id()).thenReturn(ALLOWED_PROCESS_ID);
         when(allowedProcess.version()).thenReturn(ALLOWED_PROCESS_VERSION);
-
         when(processes.processes()).thenReturn(Collections.singletonList(allowedProcess));
         when(processes.processIds()).thenReturn(Set.of(ALLOWED_PROCESS_ID));
 
-        ProcessInstanceStateDataEvent allowedEvent = newProcessInstanceStateEvent(
-                ALLOWED_PROCESS_ID, "sb-pi-allowed-1",
-                ProcessInstance.STATE_ACTIVE,
-                null, null, null, "testUser",
-                ProcessInstanceStateEventBody.EVENT_TYPE_STARTED);
-        publisher.publish(allowedEvent);
+        // Publish events only once across all tests
+        if (dataPublished.compareAndSet(false, true)) {
+            ProcessInstanceStateDataEvent allowedEvent = newProcessInstanceStateEvent(
+                    ALLOWED_PROCESS_ID, "sb-pi-allowed-1",
+                    ProcessInstance.STATE_ACTIVE,
+                    null, null, null, "testUser",
+                    ProcessInstanceStateEventBody.EVENT_TYPE_STARTED);
+            publisher.publish(allowedEvent);
 
-        ProcessInstanceStateDataEvent otherEvent = newProcessInstanceStateEvent(
-                OTHER_PROCESS_ID, "sb-pi-other-1",
-                ProcessInstance.STATE_ACTIVE,
-                null, null, null, "testUser",
-                ProcessInstanceStateEventBody.EVENT_TYPE_STARTED);
-        publisher.publish(otherEvent);
+            ProcessInstanceStateDataEvent otherEvent = newProcessInstanceStateEvent(
+                    OTHER_PROCESS_ID, "sb-pi-other-1",
+                    ProcessInstance.STATE_ACTIVE,
+                    null, null, null, "testUser",
+                    ProcessInstanceStateEventBody.EVENT_TYPE_STARTED);
+            publisher.publish(otherEvent);
+        }
     }
 
     @Test
@@ -117,7 +124,7 @@ public class SpringbootDataAuditDataIsolationIT {
         List<Map<String, Object>> result = given()
                 .port(port)
                 .contentType(ContentType.JSON)
-                .body(wrapQuery("{ GetAllProcessInstancesStateByProcessId(processId: \"" + OTHER_PROCESS_ID + "\") { processId processInstanceId } }"))
+                .body(wrapQuery("{ GetAllProcessInstancesStateByProcessId(processId: \\\"" + OTHER_PROCESS_ID + "\\\") { processId processInstanceId } }"))
                 .when()
                 .post(SubsystemConstants.DATA_AUDIT_QUERY_PATH)
                 .then()
