@@ -40,6 +40,8 @@ public class ProcessInstanceStateTO {
 
     private String rootProcessId;
 
+    private String rootProcessVersion;
+
     private String rootProcessInstanceId;
 
     private String processInstanceId;
@@ -139,6 +141,14 @@ public class ProcessInstanceStateTO {
 
     public void setRootProcessId(String rootProcessId) {
         this.rootProcessId = rootProcessId;
+    }
+
+    public String getRootProcessVersion() {
+        return rootProcessVersion;
+    }
+
+    public void setRootProcessVersion(String rootProcessVersion) {
+        this.rootProcessVersion = rootProcessVersion;
     }
 
     public String getRootProcessInstanceId() {
