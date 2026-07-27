@@ -50,6 +50,7 @@ import org.kie.kogito.event.usertask.UserTaskInstanceStateDataEvent;
 import org.kie.kogito.event.usertask.UserTaskInstanceStateEventBody;
 import org.kie.kogito.event.usertask.UserTaskInstanceVariableDataEvent;
 import org.kie.kogito.event.usertask.UserTaskInstanceVariableEventBody;
+import org.kie.kogito.jobs.api.Job;
 import org.kie.kogito.jobs.service.model.JobStatus;
 import org.kie.kogito.jobs.service.model.ScheduledJob;
 import org.kie.kogito.process.ProcessInstance;
@@ -79,28 +80,9 @@ public class DataAuditTestUtils {
             String processId, String procesInstanceId, Long repeatInterval, Integer repeatLimit, String rootProcessId, String rootProcessInstanceId,
             JobStatus state, Integer executionCounter, String exceptionMessage, String exceptionDetails) throws Exception {
 
-        ScheduledJob job = new ScheduledJob();
-        job.setId(jobId);
-        job.setNodeInstanceId(nodeInstanceId);
-        job.setCallbackEndpoint("https://callback");
-        job.setPriority(priority);
-        job.setProcessId(processId);
-        job.setProcessInstanceId(procesInstanceId);
-        job.setRepeatInterval(repeatInterval);
-        job.setRepeatLimit(repeatLimit);
-        job.setRootProcessId(rootProcessId);
-        job.setRootProcessInstanceId(rootProcessInstanceId);
-
-        job = ScheduledJob.builder()
-                .job(job)
-                .status(state)
-                .executionCounter(executionCounter)
-                .retries(executionCounter) // Set retries to match executionCounter for testing
-                .scheduledId("my scheduler")
-                .expirationTime(ZonedDateTime.now())
-                .exceptionMessage(exceptionMessage)
-                .exceptionDetails(exceptionDetails)
-                .build();
+        ScheduledJob job = buildScheduledJob(jobId, nodeInstanceId, priority, processId, procesInstanceId,
+                repeatInterval, repeatLimit, rootProcessId, rootProcessInstanceId,
+                state, executionCounter, exceptionMessage, exceptionDetails);
 
         return JobInstanceDataEvent.builder()
                 .type("JobEvent")
@@ -116,17 +98,69 @@ public class DataAuditTestUtils {
                 .build();
     }
 
+    public static JobInstanceDataEvent newJobEventWithVersion(String jobId, String nodeInstanceId, Integer priority,
+            String processId, String processVersion, String processInstanceId, Long repeatInterval, Integer repeatLimit,
+            String rootProcessId, String rootProcessVersion, String rootProcessInstanceId,
+            JobStatus state, Integer executionCounter) throws Exception {
+
+        ScheduledJob job = buildScheduledJob(jobId, nodeInstanceId, priority, processId, processInstanceId,
+                repeatInterval, repeatLimit, rootProcessId, rootProcessInstanceId,
+                state, executionCounter, null, null);
+
+        return JobInstanceDataEvent.builder()
+                .type("JobEvent")
+                .source(toURIEndpoint(processId))
+                .data(new ObjectMapper().registerModule(new JavaTimeModule()).writeValueAsBytes(job))
+                .kogitoProcessInstanceId(processInstanceId)
+                .kogitoRootProcessInstanceId(rootProcessInstanceId)
+                .kogitoProcessId(processId)
+                .kogitoProcessVersion(processVersion)
+                .kogitoRootProcessId(rootProcessId)
+                .kogitoRootProcessVersion(rootProcessVersion)
+                .kogitoIdentity("identity")
+                .build();
+    }
+
+    private static ScheduledJob buildScheduledJob(String jobId, String nodeInstanceId, Integer priority,
+            String processId, String processInstanceId, Long repeatInterval, Integer repeatLimit,
+            String rootProcessId, String rootProcessInstanceId,
+            JobStatus state, Integer executionCounter, String exceptionMessage, String exceptionDetails) {
+
+        Job base = new ScheduledJob();
+        ((ScheduledJob) base).setId(jobId);
+        ((ScheduledJob) base).setNodeInstanceId(nodeInstanceId);
+        ((ScheduledJob) base).setCallbackEndpoint("https://callback");
+        ((ScheduledJob) base).setPriority(priority);
+        ((ScheduledJob) base).setProcessId(processId);
+        ((ScheduledJob) base).setProcessInstanceId(processInstanceId);
+        ((ScheduledJob) base).setRepeatInterval(repeatInterval);
+        ((ScheduledJob) base).setRepeatLimit(repeatLimit);
+        ((ScheduledJob) base).setRootProcessId(rootProcessId);
+        ((ScheduledJob) base).setRootProcessInstanceId(rootProcessInstanceId);
+
+        return ScheduledJob.builder()
+                .job(base)
+                .status(state)
+                .executionCounter(executionCounter)
+                .retries(executionCounter)
+                .scheduledId("my scheduler")
+                .expirationTime(ZonedDateTime.now())
+                .exceptionMessage(exceptionMessage)
+                .exceptionDetails(exceptionDetails)
+                .build();
+    }
+
     public static JobInstanceDataEvent deriveNewState(JobInstanceDataEvent jobEvent, Integer executionCounter, JobStatus state) throws Exception {
         return deriveNewState(jobEvent, executionCounter, state, null, null);
     }
 
     public static JobInstanceDataEvent deriveNewState(JobInstanceDataEvent jobEvent, Integer executionCounter, JobStatus state, String exceptionMessage, String exceptionDetails) throws Exception {
-        ScheduledJob job = new ObjectMapper().registerModule(new JavaTimeModule()).readValue(jobEvent.getData(), ScheduledJob.class);
-        job = ScheduledJob.builder()
-                .job(job)
+        Job base = new ObjectMapper().registerModule(new JavaTimeModule()).readValue(jobEvent.getData(), ScheduledJob.class);
+        ScheduledJob job = ScheduledJob.builder()
+                .job(base)
                 .status(state)
                 .executionCounter(executionCounter)
-                .retries(executionCounter) // Set retries to match executionCounter for testing
+                .retries(executionCounter)
                 .scheduledId("my scheduler")
                 .expirationTime(ZonedDateTime.now())
                 .exceptionMessage(exceptionMessage)
