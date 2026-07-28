@@ -126,22 +126,22 @@ public class DataAuditTestUtils {
             String rootProcessId, String rootProcessInstanceId,
             JobStatus state, Integer executionCounter, String exceptionMessage, String exceptionDetails) {
 
-        Job base = new ScheduledJob();
-        ((ScheduledJob) base).setId(jobId);
-        ((ScheduledJob) base).setNodeInstanceId(nodeInstanceId);
-        ((ScheduledJob) base).setCallbackEndpoint("https://callback");
-        ((ScheduledJob) base).setPriority(priority);
-        ((ScheduledJob) base).setProcessId(processId);
-        ((ScheduledJob) base).setProcessInstanceId(processInstanceId);
-        ((ScheduledJob) base).setRepeatInterval(repeatInterval);
-        ((ScheduledJob) base).setRepeatLimit(repeatLimit);
-        ((ScheduledJob) base).setRootProcessId(rootProcessId);
-        ((ScheduledJob) base).setRootProcessInstanceId(rootProcessInstanceId);
+        ScheduledJob base = new ScheduledJob();
+        base.setId(jobId);
+        base.setNodeInstanceId(nodeInstanceId);
+        base.setCallbackEndpoint("https://callback");
+        base.setPriority(priority);
+        base.setProcessId(processId);
+        base.setProcessInstanceId(processInstanceId);
+        base.setRepeatInterval(repeatInterval);
+        base.setRepeatLimit(repeatLimit);
+        base.setRootProcessId(rootProcessId);
+        base.setRootProcessInstanceId(rootProcessInstanceId);
 
         return ScheduledJob.builder()
                 .job(base)
                 .status(state)
-                .executionCounter(executionCounter)
+                .executionCounter(executionCounter) // Set retries to match executionCounter for testing
                 .retries(executionCounter)
                 .scheduledId("my scheduler")
                 .expirationTime(ZonedDateTime.now())
@@ -155,11 +155,12 @@ public class DataAuditTestUtils {
     }
 
     public static JobInstanceDataEvent deriveNewState(JobInstanceDataEvent jobEvent, Integer executionCounter, JobStatus state, String exceptionMessage, String exceptionDetails) throws Exception {
-        Job base = new ObjectMapper().registerModule(new JavaTimeModule()).readValue(jobEvent.getData(), ScheduledJob.class);
-        ScheduledJob job = ScheduledJob.builder()
+        ScheduledJob job = new ObjectMapper().registerModule(new JavaTimeModule()).readValue(jobEvent.getData(), ScheduledJob.class);
+        job = ScheduledJob.builder()
+                .job(job)
                 .job(base)
                 .status(state)
-                .executionCounter(executionCounter)
+                .executionCounter(executionCounter) // Set retries to match executionCounter for testing
                 .retries(executionCounter)
                 .scheduledId("my scheduler")
                 .expirationTime(ZonedDateTime.now())
@@ -187,6 +188,50 @@ public class DataAuditTestUtils {
 
         String processVersion = "1.0";
         String rootProcessVersion = "2.0";
+        String processType = "BPMN2";
+        ProcessInstanceStateEventBody body = ProcessInstanceStateEventBody.create()
+                .processInstanceId(processInstanceId)
+                .parentInstanceId(parentProcessInstanceId)
+                .rootProcessInstanceId(rootProcessInstanceId)
+                .rootProcessId(rootProcessId)
+                .processId(processId)
+                .processType(processType)
+                .processVersion(processVersion)
+                .processName(UUID.randomUUID().toString())
+                .eventDate(new Date())
+                .state(status)
+                .businessKey("BusinessKey" + processInstanceId)
+                .roles("admin", "role2")
+                .eventUser(identity)
+                .eventType(eventType)
+                .build();
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put(ProcessInstanceEventMetadata.PROCESS_INSTANCE_ID_META_DATA, processInstanceId);
+        metadata.put(ProcessInstanceEventMetadata.PROCESS_VERSION_META_DATA, processVersion);
+        metadata.put(ProcessInstanceEventMetadata.PROCESS_ID_META_DATA, processId);
+        metadata.put(ProcessInstanceEventMetadata.PROCESS_INSTANCE_STATE_META_DATA, String.valueOf(status));
+        metadata.put(ProcessInstanceEventMetadata.PROCESS_TYPE_META_DATA, processType);
+        metadata.put(ProcessInstanceEventMetadata.PARENT_PROCESS_INSTANCE_ID_META_DATA, parentProcessInstanceId);
+        metadata.put(ProcessInstanceEventMetadata.ROOT_PROCESS_ID_META_DATA, rootProcessId);
+        metadata.put(ProcessInstanceEventMetadata.ROOT_PROCESS_VERSION_META_DATA, rootProcessVersion);
+        metadata.put(ProcessInstanceEventMetadata.ROOT_PROCESS_INSTANCE_ID_META_DATA, rootProcessInstanceId);
+
+        return ProcessInstanceStateDataEvent.builder()
+                .source(toURIEndpoint(processId))
+                .kogitoAddons(ADDONS)
+                .kogitoIdentity(identity)
+                .metaData(metadata)
+                .data(body)
+                .kogitoBusinessKey(body.getBusinessKey())
+                .build();
+    }
+
+    public static ProcessInstanceStateDataEvent newProcessInstanceStateEventWithVersion(
+            String processId, String processVersion, String processInstanceId, Integer status,
+            String rootProcessInstanceId, String rootProcessId, String rootProcessVersion,
+            String parentProcessInstanceId, String identity, int eventType) {
+
         String processType = "BPMN2";
         ProcessInstanceStateEventBody body = ProcessInstanceStateEventBody.create()
                 .processInstanceId(processInstanceId)
