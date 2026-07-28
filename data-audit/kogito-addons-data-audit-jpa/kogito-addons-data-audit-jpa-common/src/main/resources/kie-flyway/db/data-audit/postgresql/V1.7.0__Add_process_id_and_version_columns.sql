@@ -37,5 +37,17 @@ CREATE INDEX IF NOT EXISTS ix_pinl_rpid     ON Process_Instance_Node_Log     (ro
 CREATE INDEX IF NOT EXISTS ix_pivl_rpid     ON Process_Instance_Variable_Log (root_process_id);
 CREATE INDEX IF NOT EXISTS ix_piel_rpid     ON Process_Instance_Error_Log    (root_process_id);
 
+CREATE INDEX IF NOT EXISTS ix_pisl_pver     ON Process_Instance_State_Log    (process_version);
+CREATE INDEX IF NOT EXISTS ix_pinl_pver     ON Process_Instance_Node_Log     (process_version);
+CREATE INDEX IF NOT EXISTS ix_pivl_pver     ON Process_Instance_Variable_Log (process_version);
+CREATE INDEX IF NOT EXISTS ix_piel_pver     ON Process_Instance_Error_Log    (process_version);
+
+CREATE INDEX IF NOT EXISTS ix_pisl_rpver    ON Process_Instance_State_Log    (root_process_version);
+CREATE INDEX IF NOT EXISTS ix_pinl_rpver    ON Process_Instance_Node_Log     (root_process_version);
+CREATE INDEX IF NOT EXISTS ix_pivl_rpver    ON Process_Instance_Variable_Log (root_process_version);
+CREATE INDEX IF NOT EXISTS ix_piel_rpver    ON Process_Instance_Error_Log    (root_process_version);
+
 CREATE INDEX IF NOT EXISTS ix_jel_procid    ON Job_Execution_Log (process_id);
 CREATE INDEX IF NOT EXISTS ix_jel_rprocid   ON Job_Execution_Log (root_process_id);
+CREATE INDEX IF NOT EXISTS ix_jel_pver      ON Job_Execution_Log (process_version);
+CREATE INDEX IF NOT EXISTS ix_jel_rpver     ON Job_Execution_Log (root_process_version);
